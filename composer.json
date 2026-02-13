@@ -1,5 +1,5 @@
 {
-    "name": "tu-empresa/laravel-schema-manager",
+    "name": "aldoggutierrez/laravel-schema-manager",
     "description": "Manage PostgreSQL schemas in Laravel applications",
     "keywords": [
         "laravel",
