@@ -1,17 +1,19 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
+    "name": "tu-empresa/laravel-schema-manager",
+    "description": "Manage PostgreSQL schemas in Laravel applications",
     "keywords": [
-        ":vendor_name",
         "laravel",
-        ":package_slug"
+        "database",
+        "postgresql",
+        "schema",
+        "migration"
     ],
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "homepage": "https://github.com/55823142-aldoggutierrez/laravel-schema-manager",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name",
-            "email": "author@domain.com",
+            "name": "Aldoggutierrez",
+            "email": "55823142+Aldoggutierrez@users.noreply.github.com",
             "role": "Developer"
         }
     ],
@@ -30,18 +32,17 @@
         "pestphp/pest-plugin-laravel": "^4.0",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^2.0",
-        "phpstan/phpstan-phpunit": "^2.0",
-        "spatie/laravel-ray": "^1.35"
+        "phpstan/phpstan-phpunit": "^2.0"
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src/",
-            "VendorName\\Skeleton\\Database\\Factories\\": "database/factories/"
+            "Aldoggutierrez\\LaravelSchemaManager\\": "src/",
+            "Aldoggutierrez\\LaravelSchemaManager\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests/",
+            "Aldoggutierrez\\LaravelSchemaManager\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -63,10 +64,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "VendorName\\Skeleton\\SkeletonServiceProvider"
+                "Aldoggutierrez\\LaravelSchemaManager\\LaravelSchemaManagerServiceProvider"
             ],
             "aliases": {
-                "Skeleton": "VendorName\\Skeleton\\Facades\\Skeleton"
+                "LaravelSchemaManager": "Aldoggutierrez\\LaravelSchemaManager\\Facades\\LaravelSchemaManager"
             }
         }
     },

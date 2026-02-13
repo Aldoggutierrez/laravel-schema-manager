@@ -1,69 +1,107 @@
-# :package_description
+# Laravel Schema Manager
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/:vendor_slug/:package_slug.svg?style=flat-square)](https://packagist.org/packages/:vendor_slug/:package_slug)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/:vendor_slug/:package_slug/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/:vendor_slug/:package_slug/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/:vendor_slug/:package_slug/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/:vendor_slug/:package_slug/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/:vendor_slug/:package_slug.svg?style=flat-square)](https://packagist.org/packages/:vendor_slug/:package_slug)
-<!--delete-->
----
-This repo can be used to scaffold a Laravel package. Follow these steps to get started:
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/Aldoggutierrez/laravel-schema-manager.svg?style=flat-square)](https://packagist.org/packages/Aldoggutierrez/laravel-schema-manager)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/Aldoggutierrez/laravel-schema-manager/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/Aldoggutierrez/laravel-schema-manager/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/Aldoggutierrez/laravel-schema-manager/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/Aldoggutierrez/laravel-schema-manager/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
+[![Total Downloads](https://img.shields.io/packagist/dt/Aldoggutierrez/laravel-schema-manager.svg?style=flat-square)](https://packagist.org/packages/Aldoggutierrez/laravel-schema-manager)
 
-1. Press the "Use this template" button at the top of this repo to create a new repo with the contents of this skeleton.
-2. Run "php ./configure.php" to run a script that will replace all placeholders throughout all the files.
-3. Have fun creating your package.
-4. If you need help creating a package, consider picking up our <a href="https://laravelpackage.training">Laravel Package Training</a> video course.
----
-<!--/delete-->
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
-
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/:package_name.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/:package_name)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+Manage PostgreSQL schemas in Laravel applications with ease. Move tables between schemas while preserving foreign keys
+and relationships.
 
 ## Installation
 
 You can install the package via composer:
 
 ```bash
-composer require :vendor_slug/:package_slug
+composer require Aldoggutierrez/laravel-schema-manager
 ```
 
-You can publish and run the migrations with:
+## Configuration
+
+Publish the configuration file:
 
 ```bash
-php artisan vendor:publish --tag=":package_slug-migrations"
-php artisan migrate
+php artisan vendor:publish --tag="schema-manager-config"
 ```
 
-You can publish the config file with:
-
-```bash
-php artisan vendor:publish --tag=":package_slug-config"
-```
-
-This is the contents of the published config file:
+Available options in `config/schema-manager.php`:
 
 ```php
 return [
+    'default_source_schema' => env('SCHEMA_MANAGER_SOURCE', 'external'),
+    'default_destination_schema' => env('SCHEMA_MANAGER_DESTINATION', 'public'),
+    'connection' => env('SCHEMA_MANAGER_CONNECTION', null),
+    'log_queries' => env('SCHEMA_MANAGER_LOG_QUERIES', false),
 ];
 ```
 
-Optionally, you can publish the views using
+These are the contents of the published config file:
 
-```bash
-php artisan vendor:publish --tag=":package_slug-views"
+```php
+return [
+    /*
+     * Default source schema when moving tables
+     */
+    'default_source_schema' => env('SCHEMA_MANAGER_SOURCE', 'external'),
+
+    /*
+     * Default destination schema when moving tables
+     */
+    'default_destination_schema' => env('SCHEMA_MANAGER_DESTINATION', 'public'),
+
+    /*
+     * Database connection to use (leave null to use default)
+     */
+    'connection' => env('SCHEMA_MANAGER_CONNECTION', null),
+
+    /*
+     * Enable query logging during operations
+     */
+    'log_queries' => env('SCHEMA_MANAGER_LOG_QUERIES', false),
+];
+
 ```
 
 ## Usage
 
-```php
-$variable = new VendorName\Skeleton();
-echo $variable->echoPhrase('Hello, VendorName!');
+### Move a table between schemas
+
+```bash
+# Basic usage (uses config defaults)
+php artisan schema:move-table authorized_charges
+
+# Specify source and destination
+php artisan schema:move-table users --from=external --to=public
+
+# Preview changes without executing
+php artisan schema:move-table orders --dry-run
+
+# Skip confirmation prompt
+php artisan schema:move-table products --force
 ```
+
+### List tables in schemas
+
+```bash
+# List tables in default schema
+php artisan schema:list-tables
+
+# List tables in specific schema
+php artisan schema:list-tables external
+
+# List all schemas and their tables
+php artisan schema:list-tables --all
+```
+
+## Features
+
+✅ Move tables between PostgreSQL schemas  
+✅ Automatically handles foreign key constraints  
+✅ Preserves all relationships (ON UPDATE/DELETE rules)  
+✅ Cross-schema foreign key support  
+✅ Dry-run mode to preview changes  
+✅ Transaction-based for safety  
+✅ List tables and schemas
 
 ## Testing
 
@@ -85,7 +123,7 @@ Please review [our security policy](../../security/policy) on how to report secu
 
 ## Credits
 
-- [:author_name](https://github.com/:author_username)
+- [Aldoggutierrez](https://github.com/55823142+Aldoggutierrez)
 - [All Contributors](../../contributors)
 
 ## License
