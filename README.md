@@ -1,8 +1,8 @@
 # Laravel Schema Manager
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/Aldoggutierrez/laravel-schema-manager.svg?style=flat-square)](https://packagist.org/packages/Aldoggutierrez/laravel-schema-manager)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/Aldoggutierrez/laravel-schema-manager/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/Aldoggutierrez/laravel-schema-manager/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/Aldoggutierrez/laravel-schema-manager/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/Aldoggutierrez/laravel-schema-manager/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/aldoggutierrez/laravel-schema-manager.svg?style=flat-square)](https://packagist.org/packages/aldoggutierrez/laravel-schema-manager)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/aldoggutierrez/laravel-schema-manager/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/aldoggutierrez/laravel-schema-manager/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/aldoggutierrez/laravel-schema-manager/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/aldoggutierrez/laravel-schema-manager/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/aldoggutierrez/laravel-schema-manager.svg?style=flat-square)](https://packagist.org/packages/aldoggutierrez/laravel-schema-manager)
 
 Manage PostgreSQL schemas in Laravel applications with ease. Move tables between schemas while preserving foreign keys
@@ -13,7 +13,7 @@ and relationships.
 You can install the package via composer:
 
 ```bash
-composer require Aldoggutierrez/laravel-schema-manager
+composer require aldoggutierrez/laravel-schema-manager
 ```
 
 ## Configuration
