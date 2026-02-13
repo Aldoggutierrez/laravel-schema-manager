@@ -31,7 +31,7 @@ class MoveTableToSchemaCommand extends Command
         }
 
         // Verificar que la tabla existe
-        if (!$this->tableExists($table, $schemaFrom)) {
+        if (! $this->tableExists($table, $schemaFrom)) {
             $this->error("❌ Table '$table' does not exist in schema '$schemaFrom'");
 
             return self::FAILURE;
@@ -44,8 +44,8 @@ class MoveTableToSchemaCommand extends Command
         $this->newLine();
 
         // Confirmación
-        if (!$force && !$dryRun) {
-            if (!$this->confirm('Do you want to proceed?', true)) {
+        if (! $force && ! $dryRun) {
+            if (! $this->confirm('Do you want to proceed?', true)) {
                 $this->warn('Operation cancelled');
 
                 return self::SUCCESS;
@@ -64,7 +64,7 @@ class MoveTableToSchemaCommand extends Command
 
             return self::SUCCESS;
         } catch (Throwable $e) {
-            $this->error('❌ Error: ' . $e->getMessage());
+            $this->error('❌ Error: '.$e->getMessage());
 
             if ($this->output->isVerbose()) {
                 $this->error($e->getTraceAsString());
@@ -76,13 +76,13 @@ class MoveTableToSchemaCommand extends Command
 
     protected function tableExists(string $table, string $schema): bool
     {
-        $result = DB::selectOne("
+        $result = DB::selectOne('
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = ?
                 AND table_name = ?
             ) as exists
-        ", [$schema, $table]);
+        ', [$schema, $table]);
 
         return $result->exists;
     }
@@ -110,7 +110,7 @@ class MoveTableToSchemaCommand extends Command
             $fks = $this->getForeignKeys($table, $schemaFrom);
 
             if (count($fks) > 0) {
-                $this->info("🔗 Found " . count($fks) . " foreign key(s)");
+                $this->info('🔗 Found '.count($fks).' foreign key(s)');
                 $this->newLine();
             }
 

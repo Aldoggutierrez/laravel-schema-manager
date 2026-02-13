@@ -66,7 +66,7 @@ class ListTablesCommand extends Command
             return;
         }
 
-        $this->info("📋 Schema: $schema (" . count($tables) . " tables)");
+        $this->info("📋 Schema: $schema (".count($tables).' tables)');
 
         $tableData = collect($tables)->map(fn ($t) => [
             'Table' => $t->table_name,

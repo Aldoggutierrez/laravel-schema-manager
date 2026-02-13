@@ -2,9 +2,9 @@
 
 namespace Aldoggutierrez\LaravelSchemaManager\Tests;
 
+use Aldoggutierrez\LaravelSchemaManager\LaravelSchemaManagerServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Aldoggutierrez\LaravelSchemaManager\LaravelSchemaManagerServiceProvider;
 
 class TestCase extends Orchestra
 {
