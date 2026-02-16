@@ -235,9 +235,9 @@ class MoveTableToSchemaCommand extends Command
         $modelOption = $this->option('model');
 
         if ($modelOption !== null) {
-            $relativePath = str_replace('\\', DIRECTORY_SEPARATOR, $modelOption).'.php';
+            $relativePath = str_replace('\\', '/', $modelOption).'.php';
 
-            if (str_starts_with($relativePath, 'App'.DIRECTORY_SEPARATOR)) {
+            if (str_starts_with($relativePath, 'App/')) {
                 $relativePath = substr($relativePath, 4);
             }
 
