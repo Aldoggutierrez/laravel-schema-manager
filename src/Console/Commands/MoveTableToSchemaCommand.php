@@ -4,6 +4,8 @@ namespace Aldoggutierrez\LaravelSchemaManager\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Throwable;
 
 class MoveTableToSchemaCommand extends Command
@@ -12,6 +14,7 @@ class MoveTableToSchemaCommand extends Command
                         {table : The table name to move}
                         {--from= : Source schema (defaults to config)}
                         {--to= : Destination schema (defaults to config)}
+                        {--model= : Eloquent model class to update (e.g. App\\Models\\User)}
                         {--dry-run : Preview changes without executing}
                         {--force : Skip confirmation prompt}';
 
@@ -55,6 +58,7 @@ class MoveTableToSchemaCommand extends Command
 
         try {
             $this->moveTable($table, $schemaFrom, $schemaTo, $dryRun);
+            $this->updateModelTableProperty($table, $schemaTo, $dryRun);
 
             if ($dryRun) {
                 $this->warn('✓ DRY RUN completed - No changes were made');
@@ -201,5 +205,161 @@ class MoveTableToSchemaCommand extends Command
                 $this->line("  ✓ Recreated FK: $fk->constraint_name → $fk->foreign_schema.$fk->foreign_table");
             }
         }
+    }
+
+    protected function getDefaultSchema(): ?string
+    {
+        $connection = config('schema-manager.connection') ?? config('database.default');
+        $searchPath = config("database.connections.{$connection}.search_path");
+
+        if ($searchPath === null) {
+            return null;
+        }
+
+        if (is_string($searchPath)) {
+            $schemas = array_map('trim', explode(',', $searchPath));
+        } elseif (is_array($searchPath)) {
+            $schemas = $searchPath;
+        } else {
+            return null;
+        }
+
+        $schemas = array_map(fn (string $s) => trim($s, " \t\n\r\0\x0B\"'"), $schemas);
+        $schemas = array_values(array_filter($schemas));
+
+        return $schemas[0] ?? null;
+    }
+
+    protected function resolveModelPath(string $table): ?string
+    {
+        $modelOption = $this->option('model');
+
+        if ($modelOption !== null) {
+            $relativePath = str_replace('\\', DIRECTORY_SEPARATOR, $modelOption).'.php';
+
+            if (str_starts_with($relativePath, 'App'.DIRECTORY_SEPARATOR)) {
+                $relativePath = substr($relativePath, 4);
+            }
+
+            $fullPath = app_path($relativePath);
+
+            if (! File::exists($fullPath)) {
+                $this->warn("⚠ Model file not found: {$fullPath}");
+
+                return null;
+            }
+
+            return $fullPath;
+        }
+
+        $className = Str::studly(Str::singular($table));
+        $fullPath = app_path("Models/{$className}.php");
+
+        if (! File::exists($fullPath)) {
+            $this->warn("⚠ Model file not found: {$fullPath} (use --model to specify)");
+
+            return null;
+        }
+
+        return $fullPath;
+    }
+
+    protected function updateModelTableProperty(string $table, string $schemaTo, bool $dryRun): void
+    {
+        try {
+            $modelPath = $this->resolveModelPath($table);
+
+            if ($modelPath === null) {
+                return;
+            }
+
+            $defaultSchema = $this->getDefaultSchema();
+            $isMovingToDefault = $defaultSchema !== null && $schemaTo === $defaultSchema;
+
+            if ($isMovingToDefault) {
+                if ($dryRun) {
+                    $this->line("  Would remove \$table property from model: {$modelPath}");
+                } else {
+                    $this->removeTableProperty($modelPath);
+                }
+            } else {
+                $newTableValue = "{$schemaTo}.{$table}";
+                if ($dryRun) {
+                    $this->line("  Would set \$table = '{$newTableValue}' in model: {$modelPath}");
+                } else {
+                    $this->setTableProperty($modelPath, $newTableValue);
+                }
+            }
+        } catch (Throwable $e) {
+            $this->warn("⚠ Could not update model file: {$e->getMessage()}");
+        }
+    }
+
+    protected function removeTableProperty(string $modelPath): void
+    {
+        $contents = File::get($modelPath);
+
+        $pattern = '/\n\s*protected\s+\$table\s*=\s*[\'"][^\'"]*[\'"]\s*;\s*\n/';
+
+        $newContents = preg_replace($pattern, "\n", $contents, 1, $count);
+
+        if ($count > 0) {
+            File::put($modelPath, $newContents);
+            $this->info('  ✓ Removed $table property from model');
+        } else {
+            $this->line('  ℹ No $table property found in model (already using convention)');
+        }
+    }
+
+    protected function setTableProperty(string $modelPath, string $tableValue): void
+    {
+        $contents = File::get($modelPath);
+
+        $pattern = '/(protected\s+\$table\s*=\s*)[\'"][^\'"]*[\'"](\s*;)/';
+        $replacement = "\${1}'{$tableValue}'\${2}";
+
+        $newContents = preg_replace($pattern, $replacement, $contents, 1, $count);
+
+        if ($count > 0) {
+            File::put($modelPath, $newContents);
+            $this->info("  ✓ Updated \$table = '{$tableValue}' in model");
+
+            return;
+        }
+
+        $newContents = $this->insertTableProperty($contents, $tableValue);
+
+        if ($newContents !== null) {
+            File::put($modelPath, $newContents);
+            $this->info("  ✓ Added \$table = '{$tableValue}' to model");
+        } else {
+            $this->warn('  ⚠ Could not determine where to insert $table property in model');
+        }
+    }
+
+    protected function insertTableProperty(string $contents, string $tableValue): ?string
+    {
+        // Strategy 1: Insert after last indented "use Trait;" line in class body
+        preg_match_all('/^([ \t]+use\s+[\w\\\\]+\s*;\s*\n)/m', $contents, $allUseMatches, PREG_OFFSET_CAPTURE);
+
+        if (! empty($allUseMatches[0])) {
+            $lastUse = end($allUseMatches[0]);
+            $insertPos = $lastUse[1] + strlen($lastUse[0]);
+
+            return substr($contents, 0, $insertPos)
+                ."\n    protected \$table = '{$tableValue}';\n"
+                .substr($contents, $insertPos);
+        }
+
+        // Strategy 2: Insert after class opening brace
+        if (preg_match('/^(\s*class\s+\w+[^{]*\{[ \t]*\n)/m', $contents, $matches, PREG_OFFSET_CAPTURE)) {
+            $insertPos = $matches[0][1] + strlen($matches[0][0]);
+
+            return substr($contents, 0, $insertPos)
+                ."    protected \$table = '{$tableValue}';\n\n"
+                .substr($contents, $insertPos);
+        }
+
+        return null;
     }
 }
