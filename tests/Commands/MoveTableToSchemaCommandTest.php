@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 function mockTableExists(string $schema, string $table, bool $exists): void
 {
@@ -276,5 +277,298 @@ it('uses explicit --from and --to options over config defaults', function () {
         ->doesntExpectOutputToContain('default_source')
         ->doesntExpectOutputToContain('default_dest')
         ->expectsOutputToContain('Table moved successfully')
+        ->assertSuccessful();
+});
+
+// --- Model $table property update tests ---
+
+it('sets $table property when moving away from default schema', function () {
+    config()->set('database.default', 'testing');
+    config()->set('database.connections.testing.search_path', 'external,public');
+
+    mockTableExists('external', 'orders', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'orders', []);
+    mockAlterTableSetSchema('external', 'orders', 'public');
+    mockSelectSavedFks([]);
+
+    $modelContent = modelWithoutTable('Order');
+
+    File::shouldReceive('exists')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn(true);
+
+    File::shouldReceive('get')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn($modelContent);
+
+    File::shouldReceive('put')
+        ->once()
+        ->withArgs(fn ($path, $content) => str_ends_with($path, 'Models/Order.php')
+            && str_contains($content, "protected \$table = 'public.orders';"));
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'public',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain("Added \$table = 'public.orders'")
+        ->expectsOutputToContain('Table moved successfully')
+        ->assertSuccessful();
+});
+
+it('removes $table property when moving to default schema', function () {
+    config()->set('database.default', 'testing');
+    config()->set('database.connections.testing.search_path', 'external,public');
+
+    mockTableExists('public', 'orders', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('public', 'orders', []);
+    mockAlterTableSetSchema('public', 'orders', 'external');
+    mockSelectSavedFks([]);
+
+    $modelContent = modelWithTable('Order', 'public.orders');
+
+    File::shouldReceive('exists')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn(true);
+
+    File::shouldReceive('get')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn($modelContent);
+
+    File::shouldReceive('put')
+        ->once()
+        ->withArgs(fn ($path, $content) => str_ends_with($path, 'Models/Order.php')
+            && ! str_contains($content, 'protected $table'));
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'public',
+        '--to' => 'external',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain('Removed $table property from model')
+        ->expectsOutputToContain('Table moved successfully')
+        ->assertSuccessful();
+});
+
+it('updates existing $table value when moving between non-default schemas', function () {
+    config()->set('database.default', 'testing');
+    config()->set('database.connections.testing.search_path', 'external,public');
+
+    mockTableExists('public', 'orders', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('public', 'orders', []);
+    mockAlterTableSetSchema('public', 'orders', 'staging');
+    mockSelectSavedFks([]);
+
+    $modelContent = modelWithTable('Order', 'public.orders');
+
+    File::shouldReceive('exists')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn(true);
+
+    File::shouldReceive('get')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn($modelContent);
+
+    File::shouldReceive('put')
+        ->once()
+        ->withArgs(fn ($path, $content) => str_ends_with($path, 'Models/Order.php')
+            && str_contains($content, "protected \$table = 'staging.orders';"));
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'public',
+        '--to' => 'staging',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain("Updated \$table = 'staging.orders'")
+        ->expectsOutputToContain('Table moved successfully')
+        ->assertSuccessful();
+});
+
+it('shows model changes in dry-run without modifying file', function () {
+    config()->set('database.default', 'testing');
+    config()->set('database.connections.testing.search_path', 'external,public');
+
+    mockTableExists('external', 'orders', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'orders', []);
+    mockSelectSavedFks([]);
+
+    DB::shouldReceive('rollBack')->once();
+
+    File::shouldReceive('exists')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn(true);
+
+    // File::get and File::put should NOT be called in dry-run
+    File::shouldNotReceive('get');
+    File::shouldNotReceive('put');
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'public',
+        '--dry-run' => true,
+    ])
+        ->expectsOutputToContain("Would set \$table = 'public.orders'")
+        ->expectsOutputToContain('DRY RUN completed')
+        ->assertSuccessful();
+});
+
+it('warns but succeeds when model file is not found', function () {
+    config()->set('database.default', 'testing');
+    config()->set('database.connections.testing.search_path', 'external,public');
+
+    mockTableExists('external', 'orders', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'orders', []);
+    mockAlterTableSetSchema('external', 'orders', 'public');
+    mockSelectSavedFks([]);
+
+    File::shouldReceive('exists')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn(false);
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'public',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain('Model file not found')
+        ->expectsOutputToContain('Table moved successfully')
+        ->assertSuccessful();
+});
+
+it('resolves model from --model option', function () {
+    config()->set('database.default', 'testing');
+    config()->set('database.connections.testing.search_path', 'external,public');
+
+    mockTableExists('external', 'orders', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'orders', []);
+    mockAlterTableSetSchema('external', 'orders', 'public');
+    mockSelectSavedFks([]);
+
+    $modelContent = modelWithoutTable('CustomOrder');
+
+    File::shouldReceive('exists')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/CustomOrder.php'))
+        ->andReturn(true);
+
+    File::shouldReceive('get')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/CustomOrder.php'))
+        ->andReturn($modelContent);
+
+    File::shouldReceive('put')
+        ->once()
+        ->withArgs(fn ($path, $content) => str_ends_with($path, 'Models/CustomOrder.php')
+            && str_contains($content, "protected \$table = 'public.orders';"));
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'public',
+        '--model' => 'App\\Models\\CustomOrder',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain("Added \$table = 'public.orders'")
+        ->assertSuccessful();
+});
+
+it('always sets $table when no search_path is configured', function () {
+    config()->set('database.default', 'testing');
+    // No search_path configured
+
+    mockTableExists('external', 'orders', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'orders', []);
+    mockAlterTableSetSchema('external', 'orders', 'public');
+    mockSelectSavedFks([]);
+
+    $modelContent = modelWithoutTable('Order');
+
+    File::shouldReceive('exists')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn(true);
+
+    File::shouldReceive('get')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/Order.php'))
+        ->andReturn($modelContent);
+
+    File::shouldReceive('put')
+        ->once()
+        ->withArgs(fn ($path, $content) => str_ends_with($path, 'Models/Order.php')
+            && str_contains($content, "protected \$table = 'public.orders';"));
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'public',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain("Added \$table = 'public.orders'")
+        ->assertSuccessful();
+});
+
+it('resolves compound table names to correct model class', function () {
+    config()->set('database.default', 'testing');
+    config()->set('database.connections.testing.search_path', 'external,public');
+
+    mockTableExists('external', 'authorized_charges', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'authorized_charges', []);
+    mockAlterTableSetSchema('external', 'authorized_charges', 'public');
+    mockSelectSavedFks([]);
+
+    $modelContent = modelWithoutTable('AuthorizedCharge');
+
+    File::shouldReceive('exists')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/AuthorizedCharge.php'))
+        ->andReturn(true);
+
+    File::shouldReceive('get')
+        ->once()
+        ->withArgs(fn ($path) => str_ends_with($path, 'Models/AuthorizedCharge.php'))
+        ->andReturn($modelContent);
+
+    File::shouldReceive('put')
+        ->once()
+        ->withArgs(fn ($path, $content) => str_ends_with($path, 'Models/AuthorizedCharge.php')
+            && str_contains($content, "protected \$table = 'public.authorized_charges';"));
+
+    $this->artisan('schema:move-table', [
+        'table' => 'authorized_charges',
+        '--from' => 'external',
+        '--to' => 'public',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain("Added \$table = 'public.authorized_charges'")
         ->assertSuccessful();
 });
