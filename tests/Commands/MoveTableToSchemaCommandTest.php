@@ -291,6 +291,7 @@ it('handles foreign keys during table move', function () {
     $fk2 = makeFk('fk_order_product', 'product_id', 'public', 'products', 'id', 'CASCADE', 'SET NULL');
 
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', [$fk1, $fk2]);
@@ -361,6 +362,7 @@ it('uses explicit --from and --to options over config defaults', function () {
     config()->set('schema-manager.default_destination_schema', 'default_dest');
 
     mockTableExists('custom_source', 'users', true);
+    mockSchemaExists('custom_dest', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('custom_source', 'users', []);
@@ -388,6 +390,7 @@ it('sets $table property when moving away from default schema', function () {
     config()->set('database.connections.testing.search_path', 'external,public');
 
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', []);
@@ -427,6 +430,7 @@ it('removes $table property when moving to default schema', function () {
     config()->set('database.connections.testing.search_path', 'external,public');
 
     mockTableExists('public', 'orders', true);
+    mockSchemaExists('external', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('public', 'orders', []);
@@ -466,6 +470,7 @@ it('updates existing $table value when moving between non-default schemas', func
     config()->set('database.connections.testing.search_path', 'external,public');
 
     mockTableExists('public', 'orders', true);
+    mockSchemaExists('staging', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('public', 'orders', []);
@@ -505,6 +510,7 @@ it('shows model changes in dry-run without modifying file', function () {
     config()->set('database.connections.testing.search_path', 'external,public');
 
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', []);
@@ -537,6 +543,7 @@ it('warns but succeeds when model file is not found', function () {
     config()->set('database.connections.testing.search_path', 'external,public');
 
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', []);
@@ -564,6 +571,7 @@ it('resolves model from --model option', function () {
     config()->set('database.connections.testing.search_path', 'external,public');
 
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', []);
@@ -603,6 +611,7 @@ it('always sets $table when no search_path is configured', function () {
     // No search_path configured
 
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', []);
@@ -641,6 +650,7 @@ it('resolves compound table names to correct model class', function () {
     config()->set('database.connections.testing.search_path', 'external,public');
 
     mockTableExists('external', 'authorized_charges', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'authorized_charges', []);
