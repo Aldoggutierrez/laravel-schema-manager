@@ -11,6 +11,22 @@ function mockTableExists(string $schema, string $table, bool $exists): void
         ->andReturn((object) ['exists' => $exists]);
 }
 
+function mockSchemaExists(string $schema, bool $exists): void
+{
+    DB::shouldReceive('selectOne')
+        ->once()
+        ->withArgs(fn ($query, $bindings) => str_contains($query, 'information_schema.schemata')
+            && $bindings === [$schema])
+        ->andReturn((object) ['exists' => $exists]);
+}
+
+function mockCreateSchema(string $schema): void
+{
+    DB::shouldReceive('statement')
+        ->once()
+        ->withArgs(fn ($query) => str_contains($query, "CREATE SCHEMA IF NOT EXISTS $schema"));
+}
+
 function mockTransactionExecutesCallback(): void
 {
     DB::shouldReceive('transaction')
@@ -71,6 +87,7 @@ function makeFk(
 
 it('moves a table successfully with --force flag', function () {
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', []);
@@ -105,6 +122,7 @@ it('fails when the table does not exist', function () {
 
 it('shows dry-run preview without executing changes', function () {
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
 
@@ -133,8 +151,31 @@ it('shows dry-run preview without executing changes', function () {
         ->assertSuccessful();
 });
 
+it('shows would-create-schema in dry-run when schema does not exist', function () {
+    mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', false);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'orders', []);
+    mockSelectSavedFks([]);
+
+    DB::shouldReceive('rollBack')->once();
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'public',
+        '--dry-run' => true,
+    ])
+        ->expectsOutputToContain('DRY RUN MODE')
+        ->expectsOutputToContain("Would create schema 'public'")
+        ->expectsOutputToContain('DRY RUN completed')
+        ->assertSuccessful();
+});
+
 it('asks for confirmation and proceeds when user confirms', function () {
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', []);
@@ -164,11 +205,70 @@ it('cancels when user declines confirmation', function () {
         ->assertSuccessful();
 });
 
+it('creates destination schema when it does not exist and user confirms', function () {
+    mockTableExists('external', 'orders', true);
+    mockSchemaExists('newschema', false);
+    mockCreateSchema('newschema');
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'orders', []);
+    mockAlterTableSetSchema('external', 'orders', 'newschema');
+    mockSelectSavedFks([]);
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'newschema',
+    ])
+        ->expectsConfirmation('Do you want to proceed?', 'yes')
+        ->expectsConfirmation("Schema 'newschema' does not exist. Do you want to create it?", 'yes')
+        ->expectsOutputToContain("Created schema 'newschema'")
+        ->expectsOutputToContain('Table moved successfully')
+        ->assertSuccessful();
+});
+
+it('cancels when user declines schema creation', function () {
+    mockTableExists('external', 'orders', true);
+    mockSchemaExists('newschema', false);
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'newschema',
+    ])
+        ->expectsConfirmation('Do you want to proceed?', 'yes')
+        ->expectsConfirmation("Schema 'newschema' does not exist. Do you want to create it?", 'no')
+        ->expectsOutputToContain('Operation cancelled')
+        ->assertSuccessful();
+});
+
+it('creates destination schema without confirmation when --force is used', function () {
+    mockTableExists('external', 'orders', true);
+    mockSchemaExists('newschema', false);
+    mockCreateSchema('newschema');
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'orders', []);
+    mockAlterTableSetSchema('external', 'orders', 'newschema');
+    mockSelectSavedFks([]);
+
+    $this->artisan('schema:move-table', [
+        'table' => 'orders',
+        '--from' => 'external',
+        '--to' => 'newschema',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain("Created schema 'newschema'")
+        ->expectsOutputToContain('Table moved successfully')
+        ->assertSuccessful();
+});
+
 it('uses config defaults for --from and --to when not provided', function () {
     config()->set('schema-manager.default_source_schema', 'source_test');
     config()->set('schema-manager.default_destination_schema', 'dest_test');
 
     mockTableExists('source_test', 'users', true);
+    mockSchemaExists('dest_test', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('source_test', 'users', []);
@@ -190,6 +290,7 @@ it('handles foreign keys during table move', function () {
     $fk2 = makeFk('fk_order_product', 'product_id', 'public', 'products', 'id', 'CASCADE', 'SET NULL');
 
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('external', 'orders', [$fk1, $fk2]);
@@ -239,6 +340,7 @@ it('handles foreign keys during table move', function () {
 
 it('handles errors gracefully', function () {
     mockTableExists('external', 'orders', true);
+    mockSchemaExists('public', true);
 
     DB::shouldReceive('transaction')
         ->once()
@@ -259,6 +361,7 @@ it('uses explicit --from and --to options over config defaults', function () {
     config()->set('schema-manager.default_destination_schema', 'default_dest');
 
     mockTableExists('custom_source', 'users', true);
+    mockSchemaExists('custom_dest', true);
     mockTransactionExecutesCallback();
     mockCreateTempTable();
     mockGetForeignKeys('custom_source', 'users', []);

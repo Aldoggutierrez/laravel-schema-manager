@@ -53,6 +53,24 @@ class MoveTableToSchemaCommand extends Command
             $this->newLine();
         }
 
+        // Crear schema destino si no existe
+        if (! $this->schemaExists($schemaTo)) {
+            if ($dryRun) {
+                $this->warn("  Would create schema '$schemaTo'");
+                $this->newLine();
+            } else {
+                if (! $force && ! $this->confirm("Schema '$schemaTo' does not exist. Do you want to create it?", true)) {
+                    $this->warn('Operation cancelled');
+
+                    return self::SUCCESS;
+                }
+
+                $this->createSchema($schemaTo);
+                $this->info("✓ Created schema '$schemaTo'");
+                $this->newLine();
+            }
+        }
+
         try {
             $this->moveTable($table, $schemaFrom, $schemaTo, $dryRun);
 
@@ -85,6 +103,23 @@ class MoveTableToSchemaCommand extends Command
         ', [$schema, $table]);
 
         return $result->exists;
+    }
+
+    protected function schemaExists(string $schema): bool
+    {
+        $result = DB::selectOne('
+            SELECT EXISTS (
+                SELECT FROM information_schema.schemata
+                WHERE schema_name = ?
+            ) as exists
+        ', [$schema]);
+
+        return $result->exists;
+    }
+
+    protected function createSchema(string $schema): void
+    {
+        DB::statement("CREATE SCHEMA IF NOT EXISTS $schema");
     }
 
     /**
