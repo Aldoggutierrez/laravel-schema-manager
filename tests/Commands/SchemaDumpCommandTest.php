@@ -1,7 +1,6 @@
 <?php
 
 use Aldoggutierrez\LaravelSchemaManager\Console\Commands\SchemaDump;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -16,19 +15,19 @@ beforeEach(function () {
         protected function dumpSchema(array $connection, string $schemaFlags, string $path, array $env): void
         {
             $this->dumpedCalls[] = [
-                'type'        => 'schema',
+                'type' => 'schema',
                 'schemaFlags' => $schemaFlags,
-                'path'        => $path,
-                'env'         => $env,
+                'path' => $path,
+                'env' => $env,
             ];
         }
 
         protected function dumpMigrationsData(array $connection, string $schemaFlags, string $path, array $env): void
         {
             $this->dumpedCalls[] = [
-                'type'        => 'migrations',
+                'type' => 'migrations',
                 'schemaFlags' => $schemaFlags,
-                'path'        => $path,
+                'path' => $path,
             ];
         }
     };
@@ -39,9 +38,9 @@ beforeEach(function () {
 function setPgsqlConnection(array $overrides = []): void
 {
     config()->set('database.connections.pgsql', array_merge([
-        'driver'   => 'pgsql',
-        'host'     => 'localhost',
-        'port'     => 5432,
+        'driver' => 'pgsql',
+        'host' => 'localhost',
+        'port' => 5432,
         'username' => 'testuser',
         'password' => 'testpass',
         'database' => 'testdb',
@@ -192,9 +191,9 @@ it('does not prune migration files when --prune is not passed', function () {
 
 it('uses a custom --database connection', function () {
     config()->set('database.connections.myconn', [
-        'driver'   => 'pgsql',
-        'host'     => 'db.example.com',
-        'port'     => 5432,
+        'driver' => 'pgsql',
+        'host' => 'db.example.com',
+        'port' => 5432,
         'username' => 'myuser',
         'password' => 'mypass',
         'database' => 'mydb',

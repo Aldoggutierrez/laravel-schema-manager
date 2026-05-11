@@ -19,23 +19,23 @@ class SchemaDump extends Command
 
     public function handle(): int
     {
-        $connection = config('database.connections.' . $this->option('database'));
+        $connection = config('database.connections.'.$this->option('database'));
 
-        if (!$connection) {
-            $this->error('Connection [' . $this->option('database') . '] not found.');
+        if (! $connection) {
+            $this->error('Connection ['.$this->option('database').'] not found.');
 
             return self::FAILURE;
         }
 
-        $path = $this->option('path') ?? database_path('schema/' . $this->option('database') . '-schema.sql');
+        $path = $this->option('path') ?? database_path('schema/'.$this->option('database').'-schema.sql');
 
         $schemasSource = $this->option('schemas') ?? $connection['search_path'] ?? 'public';
 
         $schemas = collect(explode(',', $schemasSource))
-            ->map(fn($s) => trim($s))
+            ->map(fn ($s) => trim($s))
             ->filter();
 
-        $schemaFlags = $schemas->map(fn($s) => "--schema=$s")->implode(' ');
+        $schemaFlags = $schemas->map(fn ($s) => "--schema=$s")->implode(' ');
 
         $env = ['PGPASSWORD' => $connection['password']];
 
@@ -75,7 +75,7 @@ class SchemaDump extends Command
 
         $schema = $this->resolveMigrationSchema($migrationsTable, $connection);
 
-        if (!$schema) {
+        if (! $schema) {
             return;
         }
 
@@ -101,7 +101,7 @@ class SchemaDump extends Command
         $schemasSource = $this->option('schemas') ?? $connection['search_path'] ?? 'public';
 
         $schemas = collect(explode(',', $schemasSource))
-            ->map(fn($s) => trim($s))
+            ->map(fn ($s) => trim($s))
             ->filter()
             ->all();
 
@@ -118,9 +118,8 @@ class SchemaDump extends Command
     private function pruneMigrations(): void
     {
         collect(File::files(database_path('migrations')))
-            ->each(fn($file) => File::delete($file));
+            ->each(fn ($file) => File::delete($file));
 
         $this->components->info('Migration files pruned.');
     }
 }
-

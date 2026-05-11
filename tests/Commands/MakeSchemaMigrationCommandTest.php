@@ -6,17 +6,16 @@ it('creates a migration file when --from and --to are provided', function () {
     $filesystem = Mockery::mock(Filesystem::class);
     $filesystem->shouldReceive('put')
         ->once()
-        ->withArgs(fn (string $path, string $content) =>
-            str_contains($path, 'move_users_from_external_to_public.php') &&
+        ->withArgs(fn (string $path, string $content) => str_contains($path, 'move_users_from_external_to_public.php') &&
             str_contains($content, 'ALTER TABLE "external"."users" SET SCHEMA "public"')
         );
 
     $this->app->instance(Filesystem::class, $filesystem);
 
     $this->artisan('make:schema-migration', [
-        'table'  => 'users',
+        'table' => 'users',
         '--from' => 'external',
-        '--to'   => 'public',
+        '--to' => 'public',
     ])
         ->expectsOutputToContain('Migration created')
         ->assertSuccessful();
@@ -24,9 +23,9 @@ it('creates a migration file when --from and --to are provided', function () {
 
 it('fails when source and target schemas are the same', function () {
     $this->artisan('make:schema-migration', [
-        'table'  => 'users',
+        'table' => 'users',
         '--from' => 'public',
-        '--to'   => 'public',
+        '--to' => 'public',
     ])
         ->expectsOutputToContain('Source and target schemas must be different')
         ->assertFailed();
@@ -42,7 +41,7 @@ it('fails when from schema is empty after the prompt', function () {
 
 it('fails when to schema is empty after the prompt', function () {
     $this->artisan('make:schema-migration', [
-        'table'  => 'orders',
+        'table' => 'orders',
         '--from' => 'external',
     ])
         ->expectsQuestion('Target schema?', '')
@@ -77,9 +76,9 @@ it('includes the table and schema names in the migration filename', function () 
     $this->app->instance(Filesystem::class, $filesystem);
 
     $this->artisan('make:schema-migration', [
-        'table'  => 'products',
+        'table' => 'products',
         '--from' => 'staging',
-        '--to'   => 'production',
+        '--to' => 'production',
     ])->assertSuccessful();
 
     expect($capturedPath)->toContain('move_products_from_staging_to_production');
@@ -100,9 +99,9 @@ it('stores the migration file under the database migrations directory', function
     $this->app->instance(Filesystem::class, $filesystem);
 
     $this->artisan('make:schema-migration', [
-        'table'  => 'users',
+        'table' => 'users',
         '--from' => 'external',
-        '--to'   => 'public',
+        '--to' => 'public',
     ])->assertSuccessful();
 
     expect($capturedPath)->toContain('migrations');
@@ -123,9 +122,9 @@ it('generates correct up() SQL to move the table forward', function () {
     $this->app->instance(Filesystem::class, $filesystem);
 
     $this->artisan('make:schema-migration', [
-        'table'  => 'orders',
+        'table' => 'orders',
         '--from' => 'external',
-        '--to'   => 'public',
+        '--to' => 'public',
     ])->assertSuccessful();
 
     expect($capturedContent)
@@ -147,9 +146,9 @@ it('generates correct down() SQL to reverse the migration', function () {
     $this->app->instance(Filesystem::class, $filesystem);
 
     $this->artisan('make:schema-migration', [
-        'table'  => 'orders',
+        'table' => 'orders',
         '--from' => 'external',
-        '--to'   => 'public',
+        '--to' => 'public',
     ])->assertSuccessful();
 
     expect($capturedContent)
@@ -171,9 +170,9 @@ it('generates a stub that handles sequences in both directions', function () {
     $this->app->instance(Filesystem::class, $filesystem);
 
     $this->artisan('make:schema-migration', [
-        'table'  => 'orders',
+        'table' => 'orders',
         '--from' => 'external',
-        '--to'   => 'public',
+        '--to' => 'public',
     ])->assertSuccessful();
 
     expect($capturedContent)
@@ -197,9 +196,9 @@ it('generates a valid Migration class with up() and down() methods', function ()
     $this->app->instance(Filesystem::class, $filesystem);
 
     $this->artisan('make:schema-migration', [
-        'table'  => 'users',
+        'table' => 'users',
         '--from' => 'external',
-        '--to'   => 'public',
+        '--to' => 'public',
     ])->assertSuccessful();
 
     expect($capturedContent)

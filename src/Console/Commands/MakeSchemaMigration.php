@@ -26,7 +26,7 @@ class MakeSchemaMigration extends Command
         $from = $this->option('from') ?? $this->ask('Source schema?');
         $to = $this->option('to') ?? $this->ask('Target schema?');
 
-        if (!$from || !$to) {
+        if (! $from || ! $to) {
             $this->error('Both --from and --to schemas are required.');
 
             return self::FAILURE;
@@ -106,4 +106,3 @@ class MakeSchemaMigration extends Command
         PHP;
     }
 }
-
