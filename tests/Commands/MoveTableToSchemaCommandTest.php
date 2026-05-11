@@ -683,3 +683,54 @@ it('resolves compound table names to correct model class', function () {
         ->expectsOutputToContain("Added \$table = 'public.authorized_charges'")
         ->assertSuccessful();
 });
+
+it('recreates self-referential foreign key pointing to new schema', function () {
+    // FK: tickets.reviewed_ticket_id → external.tickets(id)
+    // After move to public, must reference public.tickets(id), not external.tickets(id)
+    $selfRefFk = makeFk('tickets_reviewed_ticket_id_foreign', 'reviewed_ticket_id', 'external', 'tickets', 'id', 'NO ACTION', 'NO ACTION');
+    $externalFk = makeFk('tickets_request_id_foreign', 'request_id', 'public', 'requests', 'id', 'NO ACTION', 'NO ACTION');
+
+    mockTableExists('external', 'tickets', true);
+    mockSchemaExists('public', true);
+    mockTransactionExecutesCallback();
+    mockCreateTempTable();
+    mockGetForeignKeys('external', 'tickets', [$selfRefFk, $externalFk]);
+
+    DB::shouldReceive('statement')
+        ->once()
+        ->withArgs(fn ($query) => str_contains($query, 'DROP CONSTRAINT tickets_reviewed_ticket_id_foreign'));
+
+    DB::shouldReceive('statement')
+        ->once()
+        ->withArgs(fn ($query) => str_contains($query, 'DROP CONSTRAINT tickets_request_id_foreign'));
+
+    DB::shouldReceive('insert')
+        ->twice()
+        ->withArgs(fn ($query) => str_contains($query, 'temp_move_fks'));
+
+    mockAlterTableSetSchema('external', 'tickets', 'public');
+
+    mockSelectSavedFks([$selfRefFk, $externalFk]);
+
+    // Self-referential FK must reference public.tickets, not external.tickets
+    DB::shouldReceive('statement')
+        ->once()
+        ->withArgs(fn ($query) => str_contains($query, 'ADD CONSTRAINT tickets_reviewed_ticket_id_foreign')
+            && str_contains($query, 'REFERENCES public.tickets'));
+
+    // External FK stays pointing to public.requests (unchanged)
+    DB::shouldReceive('statement')
+        ->once()
+        ->withArgs(fn ($query) => str_contains($query, 'ADD CONSTRAINT tickets_request_id_foreign')
+            && str_contains($query, 'REFERENCES public.requests'));
+
+    $this->artisan('schema:move-table', [
+        'table' => 'tickets',
+        '--from' => 'external',
+        '--to' => 'public',
+        '--force' => true,
+    ])
+        ->expectsOutputToContain('Recreated FK: tickets_reviewed_ticket_id_foreign → public.tickets')
+        ->expectsOutputToContain('Recreated FK: tickets_request_id_foreign → public.requests')
+        ->assertSuccessful();
+});

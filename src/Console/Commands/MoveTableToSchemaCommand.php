@@ -166,7 +166,7 @@ class MoveTableToSchemaCommand extends Command
             $this->newLine();
 
             // Recrear FKs
-            $this->recreateForeignKeys($table, $schemaTo, $dryRun);
+            $this->recreateForeignKeys($table, $schemaFrom, $schemaTo, $dryRun);
 
             if ($dryRun) {
                 DB::rollBack();
@@ -221,23 +221,28 @@ class MoveTableToSchemaCommand extends Command
         }
     }
 
-    protected function recreateForeignKeys(string $table, string $schema, bool $dryRun): void
+    protected function recreateForeignKeys(string $table, string $schemaFrom, string $schema, bool $dryRun): void
     {
         $savedFks = DB::select('SELECT * FROM temp_move_fks');
 
         foreach ($savedFks as $fk) {
+            // Self-referential FK: the table now lives in $schema, not $schemaFrom
+            $foreignSchema = ($fk->foreign_table === $table && $fk->foreign_schema === $schemaFrom)
+                ? $schema
+                : $fk->foreign_schema;
+
             $fkDef = "ALTER TABLE $schema.{$table}
                 ADD CONSTRAINT {$fk->constraint_name}
                 FOREIGN KEY ($fk->column_name)
-                REFERENCES $fk->foreign_schema.$fk->foreign_table($fk->foreign_column)
+                REFERENCES $foreignSchema.$fk->foreign_table($fk->foreign_column)
                 ON UPDATE {$fk->update_rule}
                 ON DELETE $fk->delete_rule";
 
             if ($dryRun) {
-                $this->line("  Would recreate FK: $fk->constraint_name → $fk->foreign_schema.$fk->foreign_table");
+                $this->line("  Would recreate FK: $fk->constraint_name → $foreignSchema.$fk->foreign_table");
             } else {
                 DB::statement($fkDef);
-                $this->line("  ✓ Recreated FK: $fk->constraint_name → $fk->foreign_schema.$fk->foreign_table");
+                $this->line("  ✓ Recreated FK: $fk->constraint_name → $foreignSchema.$fk->foreign_table");
             }
         }
     }
